@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>게시글 상세 - The MSA Cafe</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: navbarFragment}"></div>
+
+<div class="container">
+    <div class="content-card">
+        <div id="postDetail">
+            <div class="mb-2">
+                <span id="postType" class="badge bg-coffee"></span>
+            </div>
+
+            <h2 id="title" class="mb-3 fw-bold" style="word-break: break-all;"></h2>
+
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4 text-muted">
+                <div>
+                    <i class="bi bi-person-circle"></i> <span id="authorNickname" class="me-3 fw-bold text-dark"></span>
+                    <i class="bi bi-calendar3"></i> <span id="createdAt"></span>
+                </div>
+                <div>
+                    <i class="bi bi-eye"></i> <span id="viewCount"></span>
+                </div>
+            </div>
+
+            <div class="mb-5 px-2" id="content" style="min-height: 200px; white-space: pre-wrap; line-height: 1.6;"></div>
+
+            <div class="mb-5 d-flex justify-content-end gap-2 border-top pt-3">
+                <button class="btn btn-secondary" onclick="location.href='/list'">
+                    <i class="bi bi-list"></i> 목록
+                </button>
+                <button class="btn btn-outline-primary" onclick="editPost()">
+                    <i class="bi bi-pencil"></i> 수정
+                </button>
+                <button class="btn btn-outline-danger" onclick="deletePost()">
+                    <i class="bi bi-trash"></i> 삭제
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-light rounded p-4">
+            <h4 class="mb-3"><i class="bi bi-chat-dots"></i> 댓글</h4>
+
+            <form id="commentForm" class="mb-4">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="commentAuthor" placeholder="닉네임" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="password" class="form-control" id="commentPassword" placeholder="비밀번호 (4자리)" required>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <textarea class="form-control" id="commentContent" rows="3" placeholder="따뜻한 댓글을 남겨주세요" required></textarea>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-coffee btn-sm">댓글 등록</button>
+                </div>
+            </form>
+
+            <div id="commentList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const postId = window.location.pathname.split('/')[2];
+
+    const postTypeMap = {
+        'QUESTION': '질문',
+        'RECOMMENDATION': '추천',
+        'GENERAL': '일반',
+        'INFO': '정보'
+    };
+
+    $(document).ready(function() {
+        loadPost();
+        loadComments();
+
+        $('#commentForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const comment = {
+                content: $('#commentContent').val(),
+                authorNickname: $('#commentAuthor').val(),
+                password: $('#commentPassword').val()
+            };
+
+            $.ajax({
+                url: `/api/posts/${postId}/comments`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(comment),
+                success: function() {
+                    $('#commentContent').val('');
+                    $('#commentAuthor').val('');
+                    $('#commentPassword').val('');
+                    loadComments();
+                },
+                error: function(xhr) {
+                    alert("댓글 등록 실패: " + xhr.responseText);
+                }
+            });
+        });
+    });
+
+    function loadPost() {
+        $.ajax({
+            url: `/api/posts/${postId}`,
+            method: 'GET',
+            success: function(post) {
+                $('#title').text(post.title);
+                $('#content').text(post.content);
+                $('#createdAt').text(new Date(post.createdAt).toLocaleString());
+
+                $('#postType').text(postTypeMap[post.postType] || post.postType);
+                // 1. 유형별 색상 매핑 정의 (부트스트랩 클래스 활용)
+                const colorMap = {
+                    'QUESTION': 'bg-danger',       // 질문: 빨강
+                    'RECOMMENDATION': 'bg-success', // 추천: 초록
+                    'GENERAL': 'bg-secondary',      // 일반: 회색
+                    'INFO': 'bg-primary'            // 정보: 파랑 (bg-info는 글자가 검정이라 잘 안보일 수 있어 primary 추천)
+                };
+                // 2. 해당 유형의 색상 가져오기 (없으면 기본값 bg-secondary)
+                const badgeClass = colorMap[post.postType] || 'bg-secondary';
+                // 3. 기존 클래스(bg-coffee)를 지우고 새로운 색상 클래스 적용
+                $('#postType')
+                    .removeClass('bg-coffee') // 기존 기본 클래스 제거
+                    .addClass(badgeClass);    // 새 색상 추가
+
+                $('#authorNickname').text(post.authorNickname);
+                $('#viewCount').text(post.viewCount);
+            },
+            error: function() {
+                alert("게시글을 불러오는데 실패했습니다.");
+                location.href = "/list";
+            }
+        });
+    }
+
+    function loadComments() {
+        $.ajax({
+            url: `/api/posts/${postId}/comments`,
+            method: 'GET',
+            success: function(comments) {
+                let html = '';
+                comments.forEach(function(comment) {
+                    html += `
+                            <div class="card mb-2 border-0 shadow-sm">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <div>
+                                            <strong class="me-2">${comment.authorNickname}</strong>
+                                            <small class="text-muted" style="font-size: 0.85rem;">${new Date(comment.createdAt).toLocaleString()}</small>
+                                        </div>
+                                        <button class="btn btn-sm btn-link text-danger text-decoration-none p-0" onclick="deleteComment(${comment.id})">
+                                            <i class="bi bi-x-circle"></i> 삭제
+                                        </button>
+                                    </div>
+                                    <p class="card-text mb-0 text-dark">${comment.content}</p>
+                                </div>
+                            </div>
+                        `;
+                });
+                $('#commentList').html(html);
+            }
+        });
+    }
+
+    function editPost() {
+        const password = prompt("게시글 수정을 위해 비밀번호를 입력해주세요.");
+        if (password) {
+            $.ajax({
+                url: `/api/posts/${postId}/check-password`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ password: password }),
+                success: function() {
+                    sessionStorage.setItem("tempPassword", password);
+                    location.href = `/edit/${postId}`;
+                },
+                error: function() {
+                    alert("비밀번호가 일치하지 않습니다.");
+                }
+            });
+        }
+    }
+
+    function deletePost() {
+        const password = prompt("게시글 삭제를 위해 비밀번호를 입력해주세요.");
+        if (password) {
+            $.ajax({
+                url: `/api/posts/${postId}?password=${encodeURIComponent(password)}`,
+                method: 'DELETE',
+                success: function() {
+                    alert("삭제되었습니다.");
+                    location.href = '/list';
+                },
+                error: function(xhr) {
+                    alert("삭제 실패: 비밀번호가 일치하지 않거나 오류가 발생했습니다.");
+                }
+            });
+        }
+    }
+
+    function deleteComment(commentId) {
+        const password = prompt("댓글 삭제를 위해 비밀번호를 입력해주세요.");
+        if (password) {
+            $.ajax({
+                url: `/api/posts/${postId}/comments/${commentId}?password=${encodeURIComponent(password)}`,
+                method: 'DELETE',
+                success: function() {
+                    alert("댓글이 삭제되었습니다.");
+                    loadComments();
+                },
+                error: function(xhr) {
+                    alert("삭제 실패: 비밀번호가 일치하지 않습니다.");
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>
