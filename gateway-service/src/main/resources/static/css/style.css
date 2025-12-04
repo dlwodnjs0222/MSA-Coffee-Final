@@ -26,9 +26,9 @@ body {
     box-shadow: 0 4px 6px rgba(111, 78, 55, 0.1);
     border-bottom: 3px solid var(--coffee-primary); /* 하단에 진한 커피색 라인 추가 */
 }
-.navbar-brand {
+.navbar-brand{
     font-weight: 800;
-    color: var(--coffee-primary) !important;
+    color: black;
     font-size: 1.5rem;
     letter-spacing: -0.5px;
 }
