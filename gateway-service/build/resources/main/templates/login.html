@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="kr" th:fragment="login">
 <head>
     <meta charset="UTF-8">
     <title>로그인 - The MSA Cafe</title>
@@ -115,11 +115,14 @@
         // ★★★ 수정: id="username" 값을 가져오도록 변경 ★★★
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
+        const token = document.getElementById('token');
+        token.dataset = username;
 
         // ★★★ 서버가 원하는 키값인 "username"으로 전송 ★★★
         const loginData = {
             username: username,
-            password: password
+            password: password,
+            token: token,
         };
 
         try {
@@ -141,7 +144,7 @@
                 window.location.href = '/';
             } else {
                 const errorText = await response.text();
-                let userFriendlyMsg = "로그인 실패";
+                let userFriendlyMsg;
 
                 try {
                     const errorJson = JSON.parse(errorText);
